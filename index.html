@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- ── Primary meta ───────────────────────────────────── -->
+  <title>BookBuddy — Troca de Livros entre Amigos</title>
+  <meta name="description" content="Empresta e troca livros com os teus amigos de forma segura e divertida. A biblioteca digital para crianças!" />
+  <meta name="keywords" content="livros, crianças, leitura, troca de livros, biblioteca, amigos" />
+  <meta name="author" content="BookBuddy" />
+
+  <!-- ── PWA ────────────────────────────────────────────── -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#FF4757" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- ── iOS (Apple) specific ───────────────────────────── -->
+  <!-- Makes it look like a real app on iOS when added to home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BookBuddy" />
+
+  <!-- iOS icons (Apple ignores the manifest icons) -->
+  <link rel="apple-touch-icon" href="/icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="72x72"   href="/icons/icon-72.png" />
+  <link rel="apple-touch-icon" sizes="96x96"   href="/icons/icon-96.png" />
+  <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128.png" />
+  <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+
+  <!-- iOS splash screens (one per device size) -->
+  <!-- Generate these with: https://progressier.com/pwa-icons-and-ios-splash-screen-generator -->
+  <link rel="apple-touch-startup-image"
+    media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+    href="/splash/iphone14.png" />
+  <link rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)"
+    href="/splash/iphone8.png" />
+
+  <!-- ── Android / general ──────────────────────────────── -->
+  <meta name="msapplication-TileColor" content="#FF4757" />
+  <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+
+  <!-- ── Open Graph (sharing on WhatsApp, etc.) ─────────── -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://bookbuddy.app/" />
+  <meta property="og:title"       content="BookBuddy — Troca de Livros entre Amigos" />
+  <meta property="og:description" content="Empresta e troca livros com os teus amigos de forma segura e divertida!" />
+  <meta property="og:image"       content="https://bookbuddy.app/og-image.png" />
+  <meta property="og:locale"      content="pt_BR" />
+
+  <!-- ── Favicon ────────────────────────────────────────── -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72.png" />
+
+  <!-- ── Fonts (preconnect for speed) ──────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Boogaloo&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Prevent flash of unstyled content */
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      background: #FFFBF0;
+      min-height: 100vh;
+      /* Respect iOS safe area (notch / home indicator) */
+      padding-top:    env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left:   env(safe-area-inset-left);
+      padding-right:  env(safe-area-inset-right);
+    }
+    /* Hide scrollbar globally — the app handles its own scrolling */
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { display: none; }
+
+    /* Loading spinner shown before React mounts */
+    #splash {
+      position: fixed; inset: 0;
+      background: #FFFBF0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; z-index: 9999;
+      transition: opacity 0.3s;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash-icon {
+      font-size: 72px;
+      animation: bounce 1s infinite alternate;
+    }
+    #splash-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 28px;
+      color: #FF4757;
+    }
+    @keyframes bounce {
+      from { transform: translateY(0);    }
+      to   { transform: translateY(-12px);}
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Splash screen visible while React loads -->
+  <div id="splash" aria-hidden="true">
+    <div id="splash-icon">📚</div>
+    <div id="splash-text">BookBuddy</div>
+  </div>
+
+  <!-- React root -->
+  <div id="root"></div>
+
+  <!-- ── Service Worker Registration ──────────────────────── -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => {
+            console.log("[SW] Registered:", reg.scope);
+
+            // Check for updates every hour
+            setInterval(() => reg.update(), 60 * 60 * 1000);
+          })
+          .catch((err) => console.error("[SW] Registration failed:", err));
+      });
+    }
+
+    // Hide splash once the app has painted
+    window.addEventListener("DOMContentLoaded", () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const splash = document.getElementById("splash");
+          if (splash) splash.classList.add("hidden");
+          setTimeout(() => splash?.remove(), 400);
+        });
+      });
+    });
+
+    // ── PWA Install Prompt ───────────────────────────────────
+    // Store the prompt so we can trigger it from within the React app
+    // Usage in React: window.__pwaInstallPrompt?.prompt()
+    window.__pwaInstallPrompt = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+      // Dispatch event so React can detect it and show an install banner
+      window.dispatchEvent(new Event("pwaInstallAvailable"));
+    });
+
+    window.addEventListener("appinstalled", () => {
+      window.__pwaInstallPrompt = null;
+      console.log("[PWA] App installed!");
+    });
+  </script>
+
+  <!-- ── App entry (Vite injects this) ─────────────────── -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

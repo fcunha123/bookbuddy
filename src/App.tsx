@@ -805,89 +805,74 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Boogaloo&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
+        html,body,#root{height:100%;background:#FFFBF0;}
+        body{overscroll-behavior:none;}
         ::-webkit-scrollbar{display:none;}
         *:focus-visible{outline:3px solid #1A2025;outline-offset:3px;border-radius:8px;box-shadow:0 0 0 5px #FFD93D;}
       `}</style>
 
-      <div lang="pt-PT" style={{display:"flex",alignItems:"center",justifyContent:"center",
-        minHeight:"100vh",background:"#1A2025",padding:16}}>
-        {/* BG blobs */}
-        {[{c:C.coral,t:"5%",l:"-3%"},{c:C.yellow,t:"40%",l:"-2%"},{c:C.teal,t:"75%",l:"-3%"},
-          {c:C.lavender,t:"10%",r:"-3%"},{c:C.green,t:"50%",r:"-2%"},{c:C.pink,t:"80%",r:"-3%"}].map((b,i)=>(
-          <div key={i} aria-hidden="true" style={{position:"fixed",width:120,height:120,borderRadius:"50%",
-            background:b.c,opacity:.15,top:b.t,left:(b as any).l||"auto",right:(b as any).r||"auto",pointerEvents:"none"}}/>
-        ))}
+      <div lang="pt-PT" style={{display:"flex",flexDirection:"column",minHeight:"100vh",
+        minHeight:"100dvh",background:C.cream,maxWidth:480,margin:"0 auto",
+        position:"relative"}}>
 
-        {/* Phone shell */}
-        <div style={{width:390,height:844,background:C.cream,borderRadius:50,
-          boxShadow:"0 0 0 10px #111,0 0 0 12px #333,0 50px 120px rgba(0,0,0,.8)",
-          overflow:"hidden",position:"relative",display:"flex",flexDirection:"column"}}>
-
-          {/* Status bar */}
-          <div style={{height:48,background:C.cream,display:"flex",alignItems:"center",
-            justifyContent:"space-between",padding:"0 24px",flexShrink:0,position:"relative"}} aria-hidden="true">
-            <span style={{fontFamily:"'Fredoka One',cursive",fontSize:13,color:C.navy}}>9:41</span>
-            <div style={{width:110,height:26,background:C.navy,borderRadius:20,
-              position:"absolute",left:"50%",transform:"translateX(-50%)"}}/>
-            <span style={{fontSize:13}}>📶🔋</span>
-          </div>
-
-          {/* App header — only shown in main app */}
-          {fluxo==="app"&&(
-            <div style={{padding:"8px 18px 10px",background:C.cream,flexShrink:0,
-              borderBottom:`3px solid ${C.navy}`,display:"flex",alignItems:"center",gap:10}}>
-              <div aria-hidden="true" style={{width:40,height:40,borderRadius:14,background:C.coral,
-                border:`3px solid ${C.navy}`,display:"flex",alignItems:"center",
-                justifyContent:"center",fontSize:22,boxShadow:sh(C.navy,2,2)}}>📚</div>
-              <div>
-                <p style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.navy,lineHeight:1}}>BookBuddy</p>
-                <p style={{fontFamily:"'Boogaloo',cursive",fontSize:10,color:"#636E72"}}>O teu cantinho da leitura 🌟</p>
-              </div>
-              <div style={{marginLeft:"auto"}}>
-                <button aria-label="Notificações" style={{width:44,height:44,borderRadius:14,
-                  background:C.white,border:`3px solid ${C.navy}`,display:"flex",alignItems:"center",
-                  justifyContent:"center",cursor:"pointer",boxShadow:sh(C.navy,2,2),fontSize:20}}>
-                  🔔
-                </button>
-              </div>
+        {/* App header — only shown in main app */}
+        {fluxo==="app"&&(
+          <header style={{padding:"12px 18px",background:C.cream,flexShrink:0,
+            borderBottom:`3px solid ${C.navy}`,display:"flex",alignItems:"center",gap:10,
+            position:"sticky",top:0,zIndex:10}}>
+            <div aria-hidden="true" style={{width:40,height:40,borderRadius:14,background:C.coral,
+              border:`3px solid ${C.navy}`,display:"flex",alignItems:"center",
+              justifyContent:"center",fontSize:22,boxShadow:sh(C.navy,2,2)}}>📚</div>
+            <div>
+              <p style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.navy,lineHeight:1}}>BookBuddy</p>
+              <p style={{fontFamily:"'Boogaloo',cursive",fontSize:10,color:"#636E72"}}>O teu cantinho da leitura 🌟</p>
             </div>
-          )}
+            <div style={{marginLeft:"auto"}}>
+              <button aria-label="Notificações" style={{width:44,height:44,borderRadius:14,
+                background:C.white,border:`3px solid ${C.navy}`,display:"flex",alignItems:"center",
+                justifyContent:"center",cursor:"pointer",boxShadow:sh(C.navy,2,2),fontSize:20}}>
+                🔔
+              </button>
+            </div>
+          </header>
+        )}
 
-          {/* Screen content */}
-          <div style={{flex:1,overflowY:"auto",position:"relative"}}>
-            {fluxo==="welcome" && <Boas_Vindas onLogin={()=>setFluxo("login")} onRegister={()=>setFluxo("register")}/>}
-            {fluxo==="register" && <Registo onSuccess={onLogin} onLogin={()=>setFluxo("login")}/>}
-            {fluxo==="login" && <Login onSuccess={onLogin} onRegister={()=>setFluxo("register")}/>}
-            {fluxo==="app" && Telas[tela]}
-          </div>
-
-          {/* Bottom nav — only in main app */}
-          {fluxo==="app"&&(
-            <nav role="navigation" aria-label="Navegação principal"
-              style={{height:76,background:C.white,flexShrink:0,
-                borderTop:`3px solid ${C.navy}`,display:"flex",alignItems:"center",padding:"0 8px 6px"}}>
-              {NAV.map(item=>{
-                const a=tela===item.id;
-                return (
-                  <button key={item.id} onClick={()=>setTela(item.id)}
-                    aria-label={item.label} aria-current={a?"page":undefined}
-                    style={{flex:1,background:"none",border:"none",cursor:"pointer",
-                      display:"flex",flexDirection:"column",alignItems:"center",gap:2,
-                      padding:"4px 2px",minHeight:44}}>
-                    <span aria-hidden="true" style={{width:a?50:38,height:a?50:38,
-                      borderRadius:a?18:14,background:a?C.coral:"transparent",
-                      border:a?`3px solid ${C.navy}`:"3px solid transparent",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:a?26:20,transition:"all .15s",
-                      boxShadow:a?sh(C.navy,2,3):"none"}}>{item.icon}</span>
-                    <span style={{fontFamily:"'Fredoka One',cursive",fontSize:10,
-                      color:a?C.coral:"#6B6B6B"}}>{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          )}
+        {/* Screen content */}
+        <div style={{flex:1,overflowY:"auto",position:"relative"}}>
+          {fluxo==="welcome"  && <Boas_Vindas onLogin={()=>setFluxo("login")} onRegister={()=>setFluxo("register")}/>}
+          {fluxo==="register" && <Registo onSuccess={onLogin} onLogin={()=>setFluxo("login")}/>}
+          {fluxo==="login"    && <Login onSuccess={onLogin} onRegister={()=>setFluxo("register")}/>}
+          {fluxo==="app"      && Telas[tela]}
         </div>
+
+        {/* Bottom nav — only in main app */}
+        {fluxo==="app"&&(
+          <nav role="navigation" aria-label="Navegação principal"
+            style={{background:C.white,flexShrink:0,borderTop:`3px solid ${C.navy}`,
+              display:"flex",alignItems:"center",padding:"0 8px",
+              paddingBottom:"env(safe-area-inset-bottom)",
+              position:"sticky",bottom:0,zIndex:10}}>
+            {NAV.map(item=>{
+              const a=tela===item.id;
+              return (
+                <button key={item.id} onClick={()=>setTela(item.id)}
+                  aria-label={item.label} aria-current={a?"page":undefined}
+                  style={{flex:1,background:"none",border:"none",cursor:"pointer",
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:2,
+                    padding:"8px 2px",minHeight:60}}>
+                  <span aria-hidden="true" style={{width:a?50:38,height:a?50:38,
+                    borderRadius:a?18:14,background:a?C.coral:"transparent",
+                    border:a?`3px solid ${C.navy}`:"3px solid transparent",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:a?26:20,transition:"all .15s",
+                    boxShadow:a?sh(C.navy,2,3):"none"}}>{item.icon}</span>
+                  <span style={{fontFamily:"'Fredoka One',cursive",fontSize:10,
+                    color:a?C.coral:"#6B6B6B"}}>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </div>
     </>
   );

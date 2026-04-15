@@ -802,6 +802,41 @@ function Amigos({user}:{user:Profile}) {
   const [invEmail,setInvEmail]=useState("");
   const [invErr,setInvErr]=useState("");
   const [invDone,setInvDone]=useState(false);
+  const [linkCopiado,setLinkCopiado]=useState(false);
+
+  const linkConvite = `https://bookbuddy-eta.vercel.app?convite=${user.id}`;
+
+  const copiarLink = async () => {
+    try {
+      await navigator.clipboard.writeText(linkConvite);
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 3000);
+    } catch {
+      // fallback for older browsers
+      const el = document.createElement("textarea");
+      el.value = linkConvite;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 3000);
+    }
+  };
+
+  const partilharLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "BookBuddy",
+          text: `${user.nome} convidou-te para o BookBuddy! Troca livros com amigos de forma segura e divertida 📚`,
+          url: linkConvite,
+        });
+      } catch {}
+    } else {
+      copiarLink();
+    }
+  };
   const [toast,setToast]=useState("");
   const btnRef=useRef<any>();
 
@@ -942,12 +977,36 @@ function Amigos({user}:{user:Profile}) {
               <div style={{padding:"16px 20px 40px"}}>
                 {!invDone?(
                   <>
-                    <div style={{background:C.teal+"33",borderRadius:14,padding:"12px 16px",border:`2.5px solid ${C.teal}`,marginBottom:18,display:"flex",gap:10}}>
+                    {/* Share link */}
+                    <div style={{background:C.yellow+"44",borderRadius:16,padding:"14px 16px",border:`3px solid ${C.yellow}`,marginBottom:18}}>
+                      <p style={{fontFamily:"'Fredoka One',cursive",fontSize:15,color:C.navy,marginBottom:8}}>🔗 Partilhar link de convite</p>
+                      <p style={{fontFamily:"'Boogaloo',cursive",fontSize:13,color:C.navy,opacity:.8,marginBottom:12,lineHeight:1.5}}>Envia este link por WhatsApp, SMS ou onde quiseres!</p>
+                      <div style={{background:C.white,borderRadius:12,padding:"10px 12px",border:`2px solid ${C.navy}`,marginBottom:10,fontFamily:"'Boogaloo',cursive",fontSize:11,color:C.navy,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as any}}>
+                        🔗 bookbuddy-eta.vercel.app?convite={user.id.slice(0,8)}...
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                        <button onClick={copiarLink} style={{background:linkCopiado?C.green:C.white,color:C.navy,border:`2.5px solid ${C.navy}`,borderRadius:14,padding:"10px",fontFamily:"'Fredoka One',cursive",fontSize:13,cursor:"pointer",boxShadow:sh(C.navy,2,2),minHeight:44,transition:"all .2s"}}>
+                          {linkCopiado?"✓ Copiado!":"📋 Copiar"}
+                        </button>
+                        <button onClick={partilharLink} style={{background:C.coral,color:C.white,border:`2.5px solid ${C.navy}`,borderRadius:14,padding:"10px",fontFamily:"'Fredoka One',cursive",fontSize:13,cursor:"pointer",boxShadow:sh(C.navy,2,2),minHeight:44}}>
+                          📤 Partilhar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                      <div style={{flex:1,height:2,background:"#E0E0E0",borderRadius:1}}/>
+                      <span style={{fontFamily:"'Boogaloo',cursive",fontSize:13,color:C.navy,opacity:.6}}>ou por e-mail</span>
+                      <div style={{flex:1,height:2,background:"#E0E0E0",borderRadius:1}}/>
+                    </div>
+
+                    <div style={{background:C.teal+"33",borderRadius:14,padding:"12px 16px",border:`2.5px solid ${C.teal}`,marginBottom:14,display:"flex",gap:10}}>
                       <span aria-hidden="true" style={{fontSize:20}}>📧</span>
                       <p style={{fontFamily:"'Boogaloo',cursive",fontSize:13,color:C.navy,lineHeight:1.5}}>O teu amigo vai receber um convite por e-mail para se juntar ao BookBuddy!</p>
                     </div>
                     <Inp id="inv-e" label="E-mail do amigo" type="email" value={invEmail} onChange={setInvEmail} placeholder="amigo@email.com" required error={invErr}/>
-                    <Btn onClick={enviarConvite} bg={C.lavender} color={C.navy} style={{marginBottom:10}}>📨 Enviar Convite!</Btn>
+                    <Btn onClick={enviarConvite} bg={C.lavender} color={C.navy} style={{marginBottom:10}}>📨 Enviar Convite por E-mail</Btn>
                     <Btn onClick={()=>setModal(false)} outline>Cancelar</Btn>
                   </>
                 ):(

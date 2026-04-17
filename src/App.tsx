@@ -1197,7 +1197,6 @@ export default function App() {
   const [tela, setTela] = useState("inicio");
   const [loans, setLoans] = useState<Loan[]>([]);
   const [notifCount, setNotifCount] = useState(0);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [inviteId, setInviteId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("convite"));
   const [showInvite, setShowInvite] = useState(false);
 
@@ -1232,15 +1231,16 @@ export default function App() {
     if (inviteId && inviteId !== p.id) { setFluxo("app"); setShowInvite(true); }
     else setFluxo("app");
   };
-  const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); };
+  const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); setNotifCount(0); };
 
   // useMemo MUST be before any conditional return — Rules of Hooks
   const Telas = useMemo(() => ({
-    inicio:      <Inicio user={user!} nav={t => { setShowNotifs(false); setTela(t); }} loans={loans} />,
-    biblioteca:  <Biblioteca user={user!} />,
-    emprestados: <Emprestados user={user!} />,
-    amigos:      <Amigos user={user!} />,
-    perfil:      <Perfil user={user!} onLogout={onLogout} />,
+    inicio:         <Inicio user={user!} nav={t => setTela(t)} loans={loans} />,
+    biblioteca:     <Biblioteca user={user!} />,
+    emprestados:    <Emprestados user={user!} />,
+    amigos:         <Amigos user={user!} />,
+    perfil:         <Perfil user={user!} onLogout={onLogout} />,
+    notificacoes:   <Notificacoes user={user!} onVoltar={() => setTela("inicio")} />,
   }), [user, loans]);
 
   if (fluxo === "loading") return (
@@ -1269,7 +1269,7 @@ export default function App() {
               <p style={{ fontFamily: "'Fredoka One',cursive", fontSize: 20, color: C.navy, lineHeight: 1 }}>BookBuddy</p>
               <p style={{ fontFamily: "'Boogaloo',cursive", fontSize: 10, color: "#636E72" }}>O teu cantinho da leitura 🌟</p>
             </div>
-            <button onClick={() => { setShowNotifs(true); setNotifCount(0); }}
+            <button onClick={() => { setTela("notificacoes"); setNotifCount(0); }}
               aria-label={notifCount > 0 ? `Notificações — ${notifCount} nova${notifCount > 1 ? "s" : ""}` : "Notificações"}
               style={{ marginLeft: "auto", position: "relative", width: 44, height: 44, borderRadius: 14, background: notifCount > 0 ? C.yellow : C.white, border: `3px solid ${C.navy}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: sh(C.navy, 2, 2), fontSize: 20, minWidth: 44, minHeight: 44 }}>
               🔔
@@ -1291,14 +1291,14 @@ export default function App() {
               if (success) setTela("amigos");
             }} />
           )}
-          {fluxo === "app" && !showInvite && (showNotifs ? <Notificacoes user={user!} onVoltar={() => setShowNotifs(false)} /> : Telas[tela as keyof typeof Telas])}
+          {fluxo === "app" && !showInvite && Telas[tela as keyof typeof Telas]}
         </div>
         {fluxo === "app" && (
           <nav role="navigation" aria-label="Navegação principal" style={{ background: C.white, flexShrink: 0, borderTop: `3px solid ${C.navy}`, display: "flex", alignItems: "center", padding: "0 8px", paddingBottom: "env(safe-area-inset-bottom)", position: "sticky", bottom: 0, zIndex: 10 }}>
             {NAV.map(item => {
-              const a = tela === item.id && !showNotifs;
+              const a = tela === item.id;
               return (
-                <button key={item.id} onClick={() => { setShowNotifs(false); setTela(item.id); }}
+                <button key={item.id} onClick={() => setTela(item.id)}
                   aria-label={item.label} aria-current={a ? "page" : undefined}
                   style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "8px 2px", minHeight: 60 }}>
                   <span aria-hidden="true" style={{ width: a ? 50 : 38, height: a ? 50 : 38, borderRadius: a ? 18 : 14, background: a ? C.coral : "transparent", border: a ? `3px solid ${C.navy}` : "3px solid transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: a ? 26 : 20, transition: "all .15s", boxShadow: a ? sh(C.navy, 2, 3) : "none" }}>{item.icon}</span>

@@ -1,14 +1,13 @@
 // src/lib/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 
-// ── FIX: no hardcoded fallback credentials ──────────────────────────────────
-// Keys must be set in .env.local (dev) and Vercel environment variables (prod)
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-if (!SUPABASE_URL || !SUPABASE_ANON) {
-  throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars");
-}
+// Use env vars if set, fall back to project defaults.
+// The anon key is safe to expose — it's protected by RLS policies.
+// Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel for best practice.
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL
+  || "https://dqwtohkgbfhgtypucuhq.supabase.co";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
+  || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxd3RvaGtnYmZoZ3R5cHVjdWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNjk4OTMsImV4cCI6MjA5MTc0NTg5M30.W4Pmq84YAPzr_SK_V7v8epmx2v6DtkifsunDL-MwbN8";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true },

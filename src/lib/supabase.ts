@@ -144,28 +144,58 @@ export const uploadCover = async (bookId: string, dataUrl: string): Promise<stri
 
 // ── FRIENDSHIPS ──────────────────────────────────────────────────────────────
 export const getFriends = async (userId: string): Promise<(Friendship & { profile: Profile })[]> => {
-  const { data, error } = await supabase
+  // Step 1: get all accepted friendships
+  const { data: friendships, error } = await supabase
     .from("friendships")
-    .select(`id, status, requester_id, addressee_id,
-      req:profiles!friendships_requester_id_fkey(id,nome,email,avatar_emoji),
-      addr:profiles!friendships_addressee_id_fkey(id,nome,email,avatar_emoji)`)
+    .select("id, status, requester_id, addressee_id")
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
     .eq("status", "accepted");
   if (error) throw error;
-  return (data ?? []).map((f: any) => ({
-    ...f,
-    profile: f.requester_id === userId ? f.addr : f.req,
-  }));
+  if (!friendships || friendships.length === 0) return [];
+
+  // Step 2: get the other person's profile for each friendship
+  const otherIds = friendships.map((f: any) =>
+    f.requester_id === userId ? f.addressee_id : f.requester_id
+  );
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, nome, email, avatar_emoji")
+    .in("id", otherIds);
+
+  const profileMap: Record<string, Profile> = {};
+  (profiles ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+
+  return friendships.map((f: any) => {
+    const otherId = f.requester_id === userId ? f.addressee_id : f.requester_id;
+    return { ...f, profile: profileMap[otherId] };
+  });
 };
 
 export const getPendingRequests = async (userId: string) => {
-  const { data, error } = await supabase
+  // Step 1: get pending requests addressed to this user
+  const { data: requests, error } = await supabase
     .from("friendships")
-    .select(`id, status, requester_id,
-      profile:profiles!friendships_requester_id_fkey(id,nome,email,avatar_emoji)`)
-    .eq("addressee_id", userId).eq("status", "pending");
+    .select("id, status, requester_id")
+    .eq("addressee_id", userId)
+    .eq("status", "pending");
   if (error) throw error;
-  return data ?? [];
+  if (!requests || requests.length === 0) return [];
+
+  // Step 2: get the requester profiles
+  const requesterIds = requests.map((r: any) => r.requester_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, nome, email, avatar_emoji")
+    .in("id", requesterIds);
+
+  const profileMap: Record<string, Profile> = {};
+  (profiles ?? []).forEach((p: any) => { profileMap[p.id] = p; });
+
+  return requests.map((r: any) => ({
+    ...r,
+    profile: profileMap[r.requester_id] ?? null,
+  }));
 };
 
 export const sendFriendRequest = async (requesterId: string, addresseeId: string) => {

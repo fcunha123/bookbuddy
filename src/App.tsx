@@ -1043,11 +1043,17 @@ function Amigos({user}:{user:Profile}) {
 function Notificacoes({user}:{user:Profile}) {
   const [notifs,setNotifs]=useState<Notification[]>([]);
   const [loading,setLoading]=useState(true);
+  const [erro,setErro]=useState("");
   const naoLidas=notifs.filter(n=>!n.lida).length;
 
   const load=useCallback(async()=>{
-    setLoading(true);
-    try{const n=await getNotifications(user.id);setNotifs(n);}catch{}
+    setLoading(true);setErro("");
+    try{
+      const n=await getNotifications(user.id);
+      setNotifs(n);
+    }catch(e:any){
+      setErro(e.message||"Erro ao carregar notificações.");
+    }
     setLoading(false);
   },[user.id]);
 
@@ -1080,8 +1086,17 @@ function Notificacoes({user}:{user:Profile}) {
         <Wave color={C.cream}/>
       </div>
       <div style={{background:C.cream,padding:"4px 18px 100px"}}>
-        {loading?<p style={{fontFamily:"'Boogaloo',cursive",fontSize:16,color:C.navy,textAlign:"center",padding:"30px 0"}}>A carregar...</p>:
-          notifs.length===0?<Empty icon="🔔" title="Sem notificações" sub="Quando houver novidades, aparecem aqui!"/>:
+        {loading
+          ? <p style={{fontFamily:"'Boogaloo',cursive",fontSize:16,color:C.navy,textAlign:"center",padding:"30px 0"}}>A carregar...</p>
+          : erro
+          ? <div role="alert" style={{background:"#FFE5E5",borderRadius:18,padding:"16px 18px",border:`3px solid ${C.coral}`,marginTop:16}}>
+              <p style={{fontFamily:"'Fredoka One',cursive",fontSize:16,color:C.navy,marginBottom:4}}>Erro ao carregar ⚠️</p>
+              <p style={{fontFamily:"'Boogaloo',cursive",fontSize:13,color:C.navy,opacity:.8}}>{erro}</p>
+              <button onClick={load} style={{marginTop:10,background:C.coral,color:C.white,border:`2px solid ${C.navy}`,borderRadius:12,padding:"8px 14px",fontFamily:"'Fredoka One',cursive",fontSize:13,cursor:"pointer",minHeight:44}}>Tentar novamente</button>
+            </div>
+          : notifs.length===0
+          ? <Empty icon="🔔" title="Sem notificações" sub="Quando houver novidades, aparecem aqui!"/>
+          :
           <ul style={{listStyle:"none",padding:0}}>
             {notifs.map(n=>(
               <li key={n.id} style={{marginBottom:10}}>

@@ -1040,7 +1040,7 @@ function Amigos({user}:{user:Profile}) {
 }
 
 /* ═══════════════════════════ NOTIFICAÇÕES */
-function Notificacoes({user}:{user:Profile}) {
+function Notificacoes({user,onVoltar}:{user:Profile,onVoltar:()=>void}) {
   const [notifs,setNotifs]=useState<Notification[]>([]);
   const [loading,setLoading]=useState(true);
   const [erro,setErro]=useState("");
@@ -1076,6 +1076,7 @@ function Notificacoes({user}:{user:Profile}) {
         <Blob color="#2D3A42" size={150} style={{position:"absolute",right:-40,top:-50,opacity:.6}}/>
         <div style={{position:"relative",zIndex:1,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div>
+            <button onClick={onVoltar} style={{background:"none",border:"none",color:"rgba(255,255,255,.85)",fontFamily:"'Fredoka One',cursive",fontSize:14,cursor:"pointer",padding:0,marginBottom:8,minHeight:44,display:"block"}}>← Voltar</button>
             <h1 style={{fontFamily:"'Fredoka One',cursive",fontSize:30,color:C.white}}>🔔 Notificações</h1>
             <p style={{fontFamily:"'Boogaloo',cursive",fontSize:15,color:"rgba(255,255,255,.8)",marginBottom:14}}>
               {naoLidas>0?`${naoLidas} não lida${naoLidas>1?"s":""}`:"Tudo em dia! ✨"}
@@ -1379,7 +1380,7 @@ export default function App() {
               <p style={{fontFamily:"'Fredoka One',cursive",fontSize:20,color:C.navy,lineHeight:1}}>BookBuddy</p>
               <p style={{fontFamily:"'Boogaloo',cursive",fontSize:10,color:"#636E72"}}>O teu cantinho da leitura 🌟</p>
             </div>
-            <button onClick={()=>{setShowNotifs(p=>!p);setNotifCount(0);}}
+            <button onClick={()=>{setShowNotifs(true);setNotifCount(0);}}
               aria-label={notifCount>0?`Notificações — ${notifCount} nova${notifCount>1?"s":""}`:"Notificações"}
               style={{marginLeft:"auto",position:"relative",width:44,height:44,borderRadius:14,
                 background:notifCount>0?C.yellow:C.white,border:`3px solid ${C.navy}`,
@@ -1415,7 +1416,7 @@ export default function App() {
               }}
             />
           )}
-          {fluxo==="app" && !showInvite && (showNotifs?<Notificacoes user={user!}/>:Telas[tela])}
+          {fluxo==="app" && !showInvite && (showNotifs?<Notificacoes user={user!} onVoltar={()=>setShowNotifs(false)}/>:Telas[tela])}
         </div>
 
         {/* Bottom nav */}

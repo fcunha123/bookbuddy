@@ -4,7 +4,7 @@ import {
   getMyBooks, getFriendBooks, addBook, uploadCover, updateBook, getUserStats,
   getFriends, getPendingRequests, sendFriendRequest, respondFriendRequest,
   getMyBorrowedLoans, getMyLentLoans, requestLoan, approveLoan, rejectLoan, returnLoan,
-  getNotifications, markNotifRead, markAllNotifsRead, deleteNotif, subscribeNotifs,
+  getNotifications, markNotifRead, markAllNotifsRead, deleteNotif,
   getProfileById, checkFriendship,
   type Profile, type Book, type Loan, type Notification, type Friendship, type UserStats,
 } from "./lib/supabase";
@@ -580,13 +580,18 @@ function Biblioteca({ user }: { user: Profile }) {
           await updateBook(b.id, { capa_url: url });
           b.capa_url = url;
         } catch (e: unknown) {
-          // FIX: cover upload failure is non-fatal but now reported
-          setToast("Livro guardado, mas a foto falhou: " + (e as Error).message);
+          // Cover upload failed — book is saved, photo is not
+          // We show the error AFTER closing the modal
+          setBooks(p => [b, ...p]);
+          setSaving(false);
+          fechar();
+          setToast("Livro guardado, mas a foto falhou. Verifica o bucket 'book-covers' no Supabase.");
+          return;
         }
       }
       setBooks(p => [b, ...p]);
-      if (!toast) setToast("📚 Livro adicionado!");
       fechar();
+      setToast("📚 Livro adicionado!");
     } catch (e: unknown) { setToast("Erro: " + (e as Error).message); }
     setSaving(false);
   };
@@ -1196,7 +1201,6 @@ export default function App() {
   const [user, setUser] = useState<Profile | null>(null);
   const [tela, setTela] = useState("inicio");
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [notifCount, setNotifCount] = useState(0);
   const [inviteId, setInviteId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("convite"));
   const [showInvite, setShowInvite] = useState(false);
 
@@ -1219,19 +1223,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [inviteId]);
 
-  useEffect(() => {
-    if (!user) return;
-    getNotifications(user.id).then(ns => setNotifCount(ns.filter(n => !n.lida).length)).catch(() => {});
-    const unsub = subscribeNotifs(user.id, () => setNotifCount(p => p + 1));
-    return unsub;
-  }, [user]);
-
   const onLogin = (p: Profile) => {
     setUser(p);
     if (inviteId && inviteId !== p.id) { setFluxo("app"); setShowInvite(true); }
     else setFluxo("app");
   };
-  const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); setNotifCount(0); };
+  const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); };
 
   // Simple function — no hooks, no complexity, always returns correct screen
   const renderTela = () => {
@@ -1247,7 +1244,6 @@ export default function App() {
       }} />
     );
     switch (tela) {
-      case "notificacoes": return <Notificacoes user={user} onVoltar={() => setTela("inicio")} />;
       case "biblioteca":   return <Biblioteca user={user} />;
       case "emprestados":  return <Emprestados user={user} />;
       case "amigos":       return <Amigos user={user} />;
@@ -1282,12 +1278,6 @@ export default function App() {
               <p style={{ fontFamily: "'Fredoka One',cursive", fontSize: 20, color: C.navy, lineHeight: 1 }}>BookBuddy</p>
               <p style={{ fontFamily: "'Boogaloo',cursive", fontSize: 10, color: "#636E72" }}>O teu cantinho da leitura 🌟</p>
             </div>
-            <button onClick={() => { setTela("notificacoes"); setNotifCount(0); }}
-              aria-label={notifCount > 0 ? `Notificações — ${notifCount} nova${notifCount > 1 ? "s" : ""}` : "Notificações"}
-              style={{ marginLeft: "auto", position: "relative", width: 44, height: 44, borderRadius: 14, background: notifCount > 0 ? C.yellow : C.white, border: `3px solid ${C.navy}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: sh(C.navy, 2, 2), fontSize: 20, minWidth: 44, minHeight: 44 }}>
-              🔔
-              {notifCount > 0 && <span aria-hidden="true" style={{ position: "absolute", top: -6, right: -6, minWidth: 20, height: 20, background: C.coral, borderRadius: 10, border: `2px solid ${C.cream}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Fredoka One',cursive", fontSize: 10, color: C.white, padding: "0 4px" }}>{notifCount}</span>}
-            </button>
           </header>
         )}
         <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>

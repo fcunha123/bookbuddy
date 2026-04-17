@@ -168,13 +168,20 @@ export const updateBook = async (bookId: string, updates: Partial<Book>) => {
 };
 
 export const uploadCover = async (bookId: string, dataUrl: string): Promise<string> => {
-  const res  = await fetch(dataUrl);
-  const blob = await res.blob();
-  const ext  = blob.type.split("/")[1] || "jpg";
+  // Decode base64 directly — fetch(dataUrl) is unreliable on mobile Safari
+  const [header, base64] = dataUrl.split(",");
+  const mimeType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type: mimeType });
+
   const path = `covers/${bookId}.${ext}`;
   const { error } = await supabase.storage
-    .from("book-covers").upload(path, blob, { upsert: true });
+    .from("book-covers").upload(path, blob, { upsert: true, contentType: mimeType });
   if (error) throw error;
+
   const { data } = supabase.storage.from("book-covers").getPublicUrl(path);
   return data.publicUrl;
 };

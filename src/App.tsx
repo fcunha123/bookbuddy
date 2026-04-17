@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   supabase, signUp, signIn, signOut, getProfile, onAuthChange, resetPassword,
   getMyBooks, getFriendBooks, addBook, uploadCover, updateBook, getUserStats,
@@ -1233,15 +1233,28 @@ export default function App() {
   };
   const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); setNotifCount(0); };
 
-  // useMemo MUST be before any conditional return — Rules of Hooks
-  const Telas = useMemo(() => ({
-    inicio:         <Inicio user={user!} nav={t => setTela(t)} loans={loans} />,
-    biblioteca:     <Biblioteca user={user!} />,
-    emprestados:    <Emprestados user={user!} />,
-    amigos:         <Amigos user={user!} />,
-    perfil:         <Perfil user={user!} onLogout={onLogout} />,
-    notificacoes:   <Notificacoes user={user!} onVoltar={() => setTela("inicio")} />,
-  }), [user, loans]);
+  // Simple function — no hooks, no complexity, always returns correct screen
+  const renderTela = () => {
+    if (!user) return null;
+    if (showInvite && inviteId) return (
+      <InviteConfirm inviterId={inviteId} user={user} onDone={success => {
+        setShowInvite(false);
+        const url = new URL(window.location.href);
+        url.searchParams.delete("convite");
+        window.history.replaceState({}, "", url.toString());
+        setInviteId(null);
+        if (success) setTela("amigos");
+      }} />
+    );
+    switch (tela) {
+      case "notificacoes": return <Notificacoes user={user} onVoltar={() => setTela("inicio")} />;
+      case "biblioteca":   return <Biblioteca user={user} />;
+      case "emprestados":  return <Emprestados user={user} />;
+      case "amigos":       return <Amigos user={user} />;
+      case "perfil":       return <Perfil user={user} onLogout={onLogout} />;
+      default:             return <Inicio user={user} nav={setTela} loans={loans} />;
+    }
+  };
 
   if (fluxo === "loading") return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: C.cream, flexDirection: "column", gap: 16 }}>
@@ -1281,17 +1294,7 @@ export default function App() {
           {fluxo === "welcome"  && <Welcome onLogin={() => setFluxo("login")} onRegister={() => setFluxo("register")} />}
           {fluxo === "register" && <Register onSuccess={onLogin} onLogin={() => setFluxo("login")} />}
           {fluxo === "login"    && <Login onSuccess={onLogin} onRegister={() => setFluxo("register")} />}
-          {fluxo === "app" && showInvite && inviteId && user && (
-            <InviteConfirm inviterId={inviteId} user={user} onDone={success => {
-              setShowInvite(false);
-              const url = new URL(window.location.href);
-              url.searchParams.delete("convite");
-              window.history.replaceState({}, "", url.toString());
-              setInviteId(null);
-              if (success) setTela("amigos");
-            }} />
-          )}
-          {fluxo === "app" && !showInvite && Telas[tela as keyof typeof Telas]}
+          {fluxo === "app" && renderTela()}
         </div>
         {fluxo === "app" && (
           <nav role="navigation" aria-label="Navegação principal" style={{ background: C.white, flexShrink: 0, borderTop: `3px solid ${C.navy}`, display: "flex", alignItems: "center", padding: "0 8px", paddingBottom: "env(safe-area-inset-bottom)", position: "sticky", bottom: 0, zIndex: 10 }}>

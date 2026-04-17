@@ -1234,15 +1234,7 @@ export default function App() {
   };
   const onLogout = () => { setUser(null); setFluxo("welcome"); setTela("inicio"); setShowInvite(false); };
 
-  if (fluxo === "loading") return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: C.cream, flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 64 }}>📚</div>
-      <p style={{ fontFamily: "'Fredoka One',cursive", fontSize: 24, color: C.coral }}>BookBuddy</p>
-      <p style={{ fontFamily: "'Boogaloo',cursive", fontSize: 16, color: C.navy, opacity: .7 }}>A carregar...</p>
-    </div>
-  );
-
-  // FIX: wrapped in useMemo so tab components don't remount on every state change
+  // useMemo MUST be before any conditional return — Rules of Hooks
   const Telas = useMemo(() => ({
     inicio:      <Inicio user={user!} nav={t => { setShowNotifs(false); setTela(t); }} loans={loans} />,
     biblioteca:  <Biblioteca user={user!} />,
@@ -1250,6 +1242,14 @@ export default function App() {
     amigos:      <Amigos user={user!} />,
     perfil:      <Perfil user={user!} onLogout={onLogout} />,
   }), [user, loans]);
+
+  if (fluxo === "loading") return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: C.cream, flexDirection: "column", gap: 16 }}>
+      <div style={{ fontSize: 64 }}>📚</div>
+      <p style={{ fontFamily: "'Fredoka One',cursive", fontSize: 24, color: C.coral }}>BookBuddy</p>
+      <p style={{ fontFamily: "'Boogaloo',cursive", fontSize: 16, color: C.navy, opacity: .7 }}>A carregar...</p>
+    </div>
+  );
 
   return (
     <>

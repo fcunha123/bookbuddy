@@ -258,3 +258,26 @@ export const subscribeNotifs = (userId: string, onNew: (n: Notification) => void
     .subscribe();
   return () => supabase.removeChannel(ch);
 };
+
+// Look up any profile by ID — used for invite link flow
+// Works because we add a permissive SELECT policy for authenticated users
+export const getProfileById = async (id: string): Promise<Profile | null> => {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, nome, email, avatar_emoji")
+    .eq("id", id)
+    .single();
+  return data ?? null;
+};
+
+// Check if a friendship already exists between two users
+export const checkFriendship = async (userId: string, otherId: string) => {
+  const { data } = await supabase
+    .from("friendships")
+    .select("id, status")
+    .or(
+      `and(requester_id.eq.${userId},addressee_id.eq.${otherId}),and(requester_id.eq.${otherId},addressee_id.eq.${userId})`
+    )
+    .single();
+  return data ?? null;
+};

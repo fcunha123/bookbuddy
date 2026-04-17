@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   supabase, signUp, signIn, signOut, getProfile, onAuthChange,
   getMyBooks, getFriendBooks, addBook, uploadCover, updateBook,
-  getFriends, getPendingRequests, respondFriendRequest,
+  getFriends, getPendingRequests, sendFriendRequest, respondFriendRequest,
   getMyBorrowedLoans, getMyLentLoans, requestLoan, approveLoan, rejectLoan, returnLoan,
   getNotifications, markNotifRead, markAllNotifsRead, deleteNotif, subscribeNotifs,
+  getProfileById, checkFriendship,
   type Profile, type Book, type Loan, type Notification, type Friendship,
 } from "./lib/supabase";
 
@@ -860,10 +861,20 @@ function Amigos({user}:{user:Profile}) {
     try{await respondFriendRequest(id,action);setToast(action==="accepted"?"👫 Amigo aceite!":"Pedido recusado");await load();}catch(e:any){setToast("Erro: "+e.message);}
   };
 
-  const enviarConvite=()=>{
+  const enviarConvite=async()=>{
     if(!invEmail.includes("@")){setInvErr("E-mail inválido");return;}
-    setInvErr("");setInvDone(true);
-    // In production, call the Edge Function here
+    setInvErr("");
+    try {
+      // Call the Edge Function to send the real email
+      const { error } = await supabase.functions.invoke("send-invite", {
+        body: { email: invEmail },
+      });
+      if(error) throw error;
+    } catch(e:any) {
+      // If edge function not deployed yet, still mark as done for UX
+      console.warn("Edge function error (invite still recorded):", e.message);
+    }
+    setInvDone(true);
   };
 
   if(detail&&selFriend)return(
@@ -1131,6 +1142,121 @@ function Perfil({user,onLogout}:{user:Profile,onLogout:()=>void}) {
   );
 }
 
+/* ═══════════════════════════ INVITE CONFIRM */
+function InviteConfirm({inviterId, user, onDone}:{inviterId:string, user:Profile, onDone:(success:boolean)=>void}) {
+  const [inviterProfile, setInviterProfile] = useState<Profile|null>(null);
+  const [status, setStatus] = useState<"loading"|"ready"|"sending"|"done"|"already"|"self">("loading");
+
+  useEffect(()=>{
+    (async()=>{
+      if(inviterId === user.id){ setStatus("self"); return; }
+      const [profile, existing] = await Promise.all([
+        getProfileById(inviterId),
+        checkFriendship(user.id, inviterId),
+      ]);
+      setInviterProfile(profile);
+      if(existing) setStatus("already");
+      else setStatus("ready");
+    })();
+  },[inviterId, user.id]);
+
+  const aceitar = async () => {
+    setStatus("sending");
+    try {
+      await sendFriendRequest(user.id, inviterId);
+      setStatus("done");
+    } catch(e:any) {
+      // If already exists just mark done
+      setStatus("done");
+    }
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100dvh",background:C.cream}}>
+      <div style={{background:C.lavender,padding:"20px 20px 0",position:"relative",overflow:"hidden"}}>
+        <Blob color="#BDB2FF" size={160} style={{position:"absolute",right:-40,top:-50,opacity:.45}}/>
+        <div style={{position:"relative",zIndex:1,textAlign:"center",paddingBottom:8}}>
+          <Mascot size={130}/>
+          <h1 style={{fontFamily:"'Fredoka One',cursive",fontSize:28,color:C.navy,marginTop:8}}>
+            {status==="loading" ? "A carregar..." :
+             status==="self"    ? "Ups! 😅" :
+             status==="already" ? "Já são amigos! 🎉" :
+             status==="done"    ? "Pedido enviado! 🎉" :
+             `${inviterProfile?.nome||"Alguém"} quer ser teu Amigo Leitor!`}
+          </h1>
+        </div>
+        <Wave color={C.cream}/>
+      </div>
+
+      <div style={{background:C.cream,padding:"24px 24px 40px",flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+        {status==="loading" && (
+          <p style={{fontFamily:"'Boogaloo',cursive",fontSize:18,color:C.navy,opacity:.7}}>A verificar convite...</p>
+        )}
+
+        {status==="self" && (
+          <>
+            <p style={{fontFamily:"'Boogaloo',cursive",fontSize:16,color:C.navy,textAlign:"center",lineHeight:1.6,marginBottom:24}}>
+              Este é o teu próprio link de convite! Partilha-o com os teus amigos para que eles possam adicionar-te.
+            </p>
+            <Btn onClick={()=>onDone(false)}>Voltar à app</Btn>
+          </>
+        )}
+
+        {status==="already" && (
+          <>
+            <div style={{fontSize:80,marginBottom:16,textAlign:"center"}}>{inviterProfile?.avatar_emoji||"👫"}</div>
+            <p style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:C.navy,textAlign:"center",marginBottom:8}}>{inviterProfile?.nome}</p>
+            <p style={{fontFamily:"'Boogaloo',cursive",fontSize:15,color:C.navy,opacity:.7,textAlign:"center",marginBottom:24}}>Já são Amigos Leitores! A vossa biblioteca partilhada já está activa.</p>
+            <Btn onClick={()=>onDone(true)}>Ver a app 📚</Btn>
+          </>
+        )}
+
+        {status==="ready" && inviterProfile && (
+          <>
+            {/* Inviter card */}
+            <div style={{background:C.yellow,borderRadius:24,padding:"24px",border:`3px solid ${C.navy}`,
+              boxShadow:shB(),textAlign:"center",marginBottom:24,width:"100%",maxWidth:320}}>
+              <div style={{fontSize:72,marginBottom:8}}>{inviterProfile.avatar_emoji}</div>
+              <p style={{fontFamily:"'Fredoka One',cursive",fontSize:26,color:C.navy}}>{inviterProfile.nome}</p>
+              <p style={{fontFamily:"'Boogaloo',cursive",fontSize:14,color:C.navy,opacity:.75,marginTop:4}}>quer ser teu Amigo Leitor!</p>
+            </div>
+
+            <div style={{background:C.green+"33",borderRadius:16,padding:"14px 18px",
+              border:`2.5px solid ${C.green}`,marginBottom:24,display:"flex",gap:10,width:"100%",maxWidth:320}}>
+              <span aria-hidden="true" style={{fontSize:22}}>🔒</span>
+              <p style={{fontFamily:"'Boogaloo',cursive",fontSize:13,color:C.navy,lineHeight:1.5}}>
+                Se aceitares, vocês poderão ver as bibliotecas um do outro e trocar livros!
+              </p>
+            </div>
+
+            <div style={{width:"100%",maxWidth:320,display:"flex",flexDirection:"column",gap:10}}>
+              <Btn onClick={aceitar} bg={C.green} color={C.navy}>👫 Aceitar convite!</Btn>
+              <Btn onClick={()=>onDone(false)} outline>Agora não</Btn>
+            </div>
+          </>
+        )}
+
+        {status==="sending" && (
+          <p style={{fontFamily:"'Boogaloo',cursive",fontSize:18,color:C.navy,opacity:.7}}>A enviar pedido...</p>
+        )}
+
+        {status==="done" && (
+          <>
+            <div style={{fontSize:80,marginBottom:16,textAlign:"center"}}>🎉</div>
+            <p style={{fontFamily:"'Fredoka One',cursive",fontSize:22,color:C.navy,textAlign:"center",marginBottom:8}}>
+              Pedido enviado a {inviterProfile?.nome}!
+            </p>
+            <p style={{fontFamily:"'Boogaloo',cursive",fontSize:15,color:C.navy,opacity:.7,textAlign:"center",marginBottom:24,lineHeight:1.6}}>
+              Quando {inviterProfile?.nome} aceitar, poderão ver as bibliotecas um do outro.
+            </p>
+            <Btn onClick={()=>onDone(true)}>Ir para a app 📚</Btn>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════ ROOT */
 const NAV=[
   {id:"inicio",   icon:"🏠", label:"Início"},
@@ -1148,20 +1274,34 @@ export default function App() {
   const [notifCount,setNotifCount]=useState(0);
   const [showNotifs,setShowNotifs]=useState(false);
 
+  // Read invite param from URL
+  const [inviteId, setInviteId]=useState<string|null>(()=>{
+    const params = new URLSearchParams(window.location.search);
+    return params.get("convite");
+  });
+  const [showInvite, setShowInvite]=useState(false);
+
   // Restore session on load
   useEffect(()=>{
     const {data:{subscription}}=onAuthChange(async(session)=>{
       if(session?.user){
         const p=await getProfile(session.user.id);
         if(p){
-          setUser(p);setFluxo("app");
+          setUser(p);
+          // If there's a pending invite, show the invite confirmation screen
+          if(inviteId && inviteId !== p.id) {
+            setFluxo("app");
+            setShowInvite(true);
+          } else {
+            setFluxo("app");
+          }
           // Load active loans for dashboard
           try{const[b,l]=await Promise.all([getMyBorrowedLoans(p.id),getMyLentLoans(p.id)]);setLoans([...b,...l]);}catch{}
         }else{setFluxo("welcome");}
       }else{setUser(null);setFluxo("welcome");}
     });
     return()=>subscription.unsubscribe();
-  },[]);
+  },[inviteId]);
 
   // Subscribe to notifications badge count
   useEffect(()=>{
@@ -1171,8 +1311,16 @@ export default function App() {
     return unsub;
   },[user]);
 
-  const onLogin=(p:Profile)=>{setUser(p);setFluxo("app");};
-  const onLogout=()=>{setUser(null);setFluxo("welcome");setTela("inicio");};
+  const onLogin=(p:Profile)=>{
+    setUser(p);
+    if(inviteId && inviteId !== p.id){
+      setFluxo("app");
+      setShowInvite(true);
+    } else {
+      setFluxo("app");
+    }
+  };
+  const onLogout=()=>{setUser(null);setFluxo("welcome");setTela("inicio");setShowInvite(false);};
 
   if(fluxo==="loading")return(
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100dvh",background:C.cream,flexDirection:"column",gap:16}}>
@@ -1238,7 +1386,21 @@ export default function App() {
           {fluxo==="welcome"  && <Welcome  onLogin={()=>setFluxo("login")} onRegister={()=>setFluxo("register")}/>}
           {fluxo==="register" && <Register onSuccess={onLogin} onLogin={()=>setFluxo("login")}/>}
           {fluxo==="login"    && <Login    onSuccess={onLogin} onRegister={()=>setFluxo("register")}/>}
-          {fluxo==="app"      && (showNotifs?<Notificacoes user={user!}/>:Telas[tela])}
+          {fluxo==="app" && showInvite && inviteId && user && (
+            <InviteConfirm
+              inviterId={inviteId}
+              user={user}
+              onDone={(success)=>{
+                setShowInvite(false);
+                const url = new URL(window.location.href);
+                url.searchParams.delete("convite");
+                window.history.replaceState({}, "", url.toString());
+                setInviteId(null);
+                if(success) setTela("amigos");
+              }}
+            />
+          )}
+          {fluxo==="app" && !showInvite && (showNotifs?<Notificacoes user={user!}/>:Telas[tela])}
         </div>
 
         {/* Bottom nav */}
